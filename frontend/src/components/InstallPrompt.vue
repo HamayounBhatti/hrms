@@ -2,7 +2,7 @@
 	<!-- Install PWA dialog -->
 	<Dialog v-model="showDialog">
 		<template #body-title>
-			<h2 class="text-lg font-bold">{{ __("Install Frappe HR") }} </h2>
+			<h2 class="text-lg font-bold">{{ __("Install Xconsol HR") }} </h2>
 		</template>
 		<template #body-content>
 			<p>{{ __("Get the app on your device for easy access & a better experience!") }} </p>
@@ -25,7 +25,7 @@
 					class="flex flex-row text-center items-center justify-between mb-1 px-3"
 				>
 					<span class="text-base text-gray-900 font-bold">
-						{{ __("Install Frappe HR") }}
+						{{ __("Install Xconsol HR") }}
 					</span>
 					<span class="inline-flex items-baseline">
 						<FeatherIcon
@@ -53,9 +53,11 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
+import { ref, watch } from "vue"
 
 import { Dialog, Popover, FeatherIcon } from "frappe-ui"
+
+const DISMISS_KEY = "xconsol_install_prompt_dismissed"
 
 // Initialize deferredPrompt for use later to show browser install prompt.
 const deferredPrompt = ref(null)
@@ -72,8 +74,25 @@ const isIos = () => {
 const isInStandaloneMode = () =>
 	"standalone" in window.navigator && window.navigator.standalone
 
-// Checks if should display install popup notification:
-if (isIos() && !isInStandaloneMode()) {
+const wasPromptDismissed = () => {
+	try {
+		return window.localStorage.getItem(DISMISS_KEY) === "1"
+	} catch {
+		return false
+	}
+}
+
+const markPromptDismissed = () => {
+	try {
+		window.localStorage.setItem(DISMISS_KEY, "1")
+	} catch {
+		// ignore storage errors
+	}
+}
+
+// Show the install prompt only once. Once the user dismisses it or installs
+// the app, remember it and never nag them again.
+if (!wasPromptDismissed() && isIos() && !isInStandaloneMode()) {
 	iosInstallMessage.value = true
 }
 
@@ -82,22 +101,40 @@ window.addEventListener("beforeinstallprompt", (e) => {
 	e.preventDefault()
 	// Stash the event so it can be triggered later.
 	deferredPrompt.value = e
-	if (isIos() && !isInStandaloneMode()) {
+
+	if (wasPromptDismissed() || isInStandaloneMode()) {
+		return
+	}
+
+	if (isIos()) {
 		iosInstallMessage.value = true
 	} else {
 		showDialog.value = true
 	}
-	// Optionally, send analytics event that PWA install promo was shown.
-	console.log(`'beforeinstallprompt' event was fired.`)
 })
 
 window.addEventListener("appinstalled", () => {
 	showDialog.value = false
 	deferredPrompt.value = null
+	markPromptDismissed()
+})
+
+watch(showDialog, (value, oldValue) => {
+	if (oldValue && !value) {
+		markPromptDismissed()
+	}
+})
+
+watch(iosInstallMessage, (value, oldValue) => {
+	if (oldValue && !value) {
+		markPromptDismissed()
+	}
 })
 
 async function install() {
+	if (!deferredPrompt.value) return
 	deferredPrompt.value.prompt()
 	showDialog.value = false
+	markPromptDismissed()
 }
 </script>

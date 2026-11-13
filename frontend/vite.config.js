@@ -19,13 +19,14 @@ export default defineConfig({
 			registerType: "autoUpdate",
 			strategies: "injectManifest",
 			injectRegister: null,
+			manifestFilename: "xconsol-hr.webmanifest",
 			devOptions: {
 				enabled: true,
 			},
 			manifest: {
 				display: "standalone",
-				name: "Frappe HR",
-				short_name: "Frappe HR",
+				name: "Xconsol HR",
+				short_name: "Xconsol HR",
 				start_url: "/hrms",
 				description: "Everyday HR & Payroll operations at your fingertips",
 				theme_color: "#ffffff",
